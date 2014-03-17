@@ -11,7 +11,7 @@ var Parser = require('jsonparse')
 
 */
 
-exports.parse = function (path) {
+exports.parse = function (path, map) {
 
   var parser = new Parser()
   var stream = through(function (chunk) {
@@ -80,7 +80,9 @@ exports.parse = function (path) {
     if (j !== this.stack.length) return
 
     count ++
-    stream.queue(this.value[this.key])
+    var value = this.value[this.key]
+    if(value !== undefined)
+      stream.queue(map ? map(value, this.key) : value)
     delete this.value[this.key]
   }
   parser._onToken = parser.onToken;
@@ -118,17 +120,16 @@ function check (x, y) {
   return false
 }
 
-exports.stringify = function (op, sep, cl) {
+exports.stringify = function (op, sep, cl, indent) {
+  indent = indent || 0
   if (op === false){
     op = ''
     sep = '\n'
     cl = ''
   } else if (op == null) {
-
-    op = '[\n'
-    sep = '\n,\n'
-    cl = '\n]\n'
-
+      op = '[\n'
+      sep = '\n,\n'
+      cl = '\n]\n'
   }
 
   //else, what ever you like
@@ -138,7 +139,7 @@ exports.stringify = function (op, sep, cl) {
     , anyData = false
   stream = through(function (data) {
     anyData = true
-    var json = JSON.stringify(data)
+    var json = JSON.stringify(data, null, indent)
     if(first) { first = false ; stream.queue(op + json)}
     else stream.queue(sep + json)
   },
@@ -152,17 +153,16 @@ exports.stringify = function (op, sep, cl) {
   return stream
 }
 
-exports.stringifyObject = function (op, sep, cl) {
+exports.stringifyObject = function (op, sep, cl, indent) {
+  indent = indent || 0
   if (op === false){
     op = ''
     sep = '\n'
     cl = ''
   } else if (op == null) {
-
     op = '{\n'
     sep = '\n,\n'
     cl = '\n}\n'
-
   }
 
   //else, what ever you like
@@ -172,10 +172,10 @@ exports.stringifyObject = function (op, sep, cl) {
     , anyData = false
   stream = through(function (data) {
     anyData = true
-    var json = JSON.stringify(data[0]) + ':' + JSON.stringify(data[1])
+    var json = JSON.stringify(data[0]) + ':' + JSON.stringify(data[1], null, indent)
     if(first) { first = false ; stream.queue(op + json)}
     else stream.queue(sep + json)
-  }, 
+  },
   function (data) {
     if(!anyData) stream.queue(op)
     stream.queue(cl)
